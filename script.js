@@ -2,17 +2,20 @@ var mydata = [];
 var x, y, bins;
 $("#table_container").data("binname", "Group");
 $("#table_container").data("chartname", "bar");
+$("#table_container").data("Bins", bins);
 
 
-function generateBins(mydata) {
+function generateBins(mydata, ticks) {
     
      x = d3.scaleLinear()
      .domain([0,d3.max(mydata)]);
 
      bins = d3.histogram()
     .domain(x.domain())
-    .thresholds(x.ticks(10))
+    .thresholds(x.ticks(ticks))
     (mydata);
+
+    $("#table_container").data("Bins", bins);
 }
 
 
@@ -60,7 +63,8 @@ function populateandDrawHist(attr) {
                   if (d[attr] != 0)
                   mydata.push(d[attr]);
                   });
-  generateBins(mydata);
+  debugger;
+  generateBins(mydata, 12);
   drawHistogram(mydata);
 }
 
@@ -70,12 +74,9 @@ function populateandDrawPie(attr) {
                   if (d[attr] != 0)
                   mydata.push(d[attr]);
                   });
-  generateBins(mydata);
+  generateBins(mydata, 10);
   drawPie(mydata);
 }
-
-
- 
 });
 
  
@@ -87,6 +88,7 @@ function drawPie(mydata) {
   //var data = [{"letter":"q","presses":1},{"letter":"w","presses":5},{"letter":"e","presses":2}];
   var data = [];
   var i =0;
+  bins = $("#table_container").data("Bins");
   bins.forEach(function(d) {
                      data[i] = {range : d.x0 + "-" + d.x1 , count: d.length };
                      i = i+1;
@@ -186,6 +188,8 @@ function drawPie(mydata) {
 
 function drawHistogram(mydata) {
     
+    
+
     d3.selectAll("g").remove();
     var svg = d3.select("svg"),
     margin = {top: 10, right: 30, bottom: 30, left: 100},
@@ -193,11 +197,63 @@ function drawHistogram(mydata) {
     height = +svg.attr("height") - margin.top - margin.bottom,
     g = svg.append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
-    .on("click", function() {
-       $("#table_container").data("chartname", "pie");
-       drawPie(mydata); 
+    .on("contextmenu", function() {
+          d3.event.preventDefault();
+         $("#table_container").data("chartname", "pie");
+         drawPie(mydata); 
     });
-     
+    bins = $("#table_container").data("Bins");
+
+    var pastpos =margin.left;
+    var ticks = 10;
+    var offset = width / 10;
+    var drag1 = d3.drag()
+         //.subject(function() { 
+             // return { x: d3.event.x, y: 0}
+         //})
+        
+        .on("end", function(d,i) {
+               // d3.event.sourceEvent.stopPropagation();
+               pastpos = d3.event.x;
+               ticks = 10;
+            })
+        .on("drag", function(d,i) {
+               // d3.event.sourceEvent.stopPropagation();
+                console.log(ticks + "," + offset + "," + d3.event.x + "," + pastpos);
+                //return "translate(" + [ d3.event.x,d3.event.y ] + ")"
+                if(d3.event.x > pastpos) {
+                     if(d3.event.x - pastpos > offset ) {
+                      ticks = ticks + 1;;
+                      generateBins(mydata, ticks);
+                      drawHistogram(mydata);
+                      pastpos = d3.event.x;
+                     }
+                }
+                if(d3.event.x < pastpos) {
+                 if(pastpos - d3.event.x > offset ) {
+                      ticks--;
+                      generateBins(mydata, ticks);
+                      drawHistogram(mydata);
+                      pastpos = d3.event.x;
+                     }
+                }
+                
+            })
+        .on("end", function(d,i) {
+               // d3.event.sourceEvent.stopPropagation();
+               pastpos = d3.event.x;
+               ticks = 10;
+            });
+        //});
+
+svg.call(drag1);
+
+    // .on("mouseenter", function() {
+    //    var coordinates = [0, 0];
+    //    coordinates = d3.mouse(this);
+    //    var x = coordinates[0];
+    // })
+
     
      x.range([0, width]);
      
