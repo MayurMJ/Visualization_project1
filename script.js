@@ -95,20 +95,26 @@ function drawPie(mydata) {
   height = 400,
   radius = Math.min(width, height) / 2;
 
+  var legendRectSize = 18;
+  var legendSpacing = 4; 
+
   var color = d3.scaleOrdinal()
  // .range(["#6363FF", "#6373FF", "#63A3FF", "#63E3FF", "#63FFFB", "#63FFCB",
         //       "#63FF9B", "#63FF6B", "#7BFF63", "#BBFF63", "#DBFF63", "#FBFF63", 
          //      "#FFD363", "#FFB363", "#FF8363", "#FF7363", "#FF6364"])
-  .range(["#00FFFF", "#fa8072", "#228B22", "#0000FF", "#8A2BE2", "#A52A2A", "#5F9EA0", "#7FFF00", "#6495ED", "#DC143C", "#00008B", "#006400", "#8B008B", "#556B2F", "#8B0000", "#FFD700", "#D3D3D3",  "#FF4500", "#FF0000", "#7CFC00"]);
-  //.range(d3.schemeCategory20);
+  //.range(["#00FFFF", "#fa8072", "#228B22", "#0000FF", "#8A2BE2", "#A52A2A", "#5F9EA0", "#7FFF00", "#6495ED", "#DC143C", "#00008B", "#006400", "#8B008B", "#556B2F", "#8B0000", "#FFD700", "#D3D3D3",  "#FF4500", "#FF0000", "#7CFC00"]);
+  .range(d3.schemeCategory20);
 
   var pie = d3.pie()
+  .sort(null)
+  .startAngle(1.1*Math.PI)
+  .endAngle(3.1*Math.PI)
   .value(function(d) { return d.count;})
   (data);
 
   var arc = d3.arc()
   .outerRadius(radius - 10)
-  .innerRadius(0);
+  .innerRadius(radius - 100);
   
   var labelArc = d3.arc()
   .outerRadius(radius - 40)
@@ -117,12 +123,14 @@ function drawPie(mydata) {
   var svg = d3.select("svg")
   .attr("width", width)
   .attr("height", height)
+  .attr("fill" , "white")
   .append("g")
   .attr("transform", "translate(" + width/2 + "," + height/2 +")"); 
 
   var g = svg.selectAll("arc")
   .data(pie)
-  .enter().append("g")
+  .enter()
+  .append("g")
   .attr("class", "arc")
   .on("click", function() {
        $("#table_container").data("chartname", "bar");
@@ -130,13 +138,47 @@ function drawPie(mydata) {
     });
 
   g.append("path")
-  .attr("d", arc)
-  .style("fill", function(d) { return color(d.data.range);});
+  //.attr("d", arc)
+  .style("fill", function(d) { return color(d.data.range);})
+  .transition().delay(function(d, i) { return i * 150; }).duration(10)
+  .attrTween('d', function(d) {
+       var i = d3.interpolate(d.startAngle+0.1, d.endAngle);
+       return function(t) {
+           d.endAngle = i(t);
+         return arc(d);
+       }
+  });
 
-  g.append("text")
-  .attr("transform", function(d) { return "translate(" + labelArc.centroid(d)  + ")"; })
-  .text(function(d) { return d.data.count;}) 
-  .style("fill", "#fff");
+   g.append("text")
+   .attr("transform", function(d) { return "translate(" + labelArc.centroid(d)  + ")"; })
+   .text(function(d) { return d.data.count;}) 
+   .style("fill", "#fff");
+
+  var legend = svg.selectAll('.legend')                     
+          .data(color.domain())                                   
+          .enter()                                                
+          .append('g')                                            
+          .attr('class', 'legend')                                
+          .attr('transform', function(d, i) {                     
+            var height = legendRectSize + legendSpacing;          
+            var offset =  height * color.domain().length / 2;     
+            var horz = 12 * legendRectSize;                       
+            var vert = i * height - offset;                       
+            return 'translate(' + horz + ',' + vert + ')';        
+          });                                                     
+
+        legend.append('rect')                                     
+          .attr('width', legendRectSize)                          
+          .attr('height', legendRectSize)                         
+          .style('fill', color)                                   
+          .style('stroke', color);                                
+          
+        legend.append('text')                                     
+          .attr('x', legendRectSize + legendSpacing)              
+          .attr('y', legendRectSize - legendSpacing)              
+          .text(function(d) { return d; })
+          .style("fill", "black");                       
+
 
 }
 
@@ -204,14 +246,13 @@ function drawHistogram(mydata) {
 
 
 
-    // Create Event Handlers for mouse
-      function handleMouseOver(d, i) {  // Add interactivity
-            // Use D3 to select element, change color and size
+
+      function handleMouseOver(d, i) {
             
-            debugger;
-            var translate =  d3.max(mydata) / 200.20;
-            d3.select(this.parentNode)
-            .attr("transform", function(d) { return "translate(" + x(d.x0 - translate) + "," + y(d.length) + ")"; })
+            var translateY = d3.max(bins, function(d) { return (d.length * 1.1); }) / 24.475;
+            var translateX =  d3.max(mydata) / 150.20;
+             d3.select(this.parentNode)
+            .attr("transform", function(d) { return "translate(" + x(d.x0 - translateX) + "," + y(d.length + translateY) + ")"; })
             .select("text")
             .style("display" , "block");
             
@@ -220,8 +261,8 @@ function drawHistogram(mydata) {
             var changeBar = d3.select(this);
              changeBar
             .attr("fill", "green")
-            .attr("width", (x(bins[0].x1) - x(bins[0].x0) - 1))
-            .attr("height", function(d) { return (height - y(d.length) ); });
+            .attr("width", (x(bins[0].x1) - x(bins[0].x0)  + 2))
+            .attr("height", function(d) { return (height - (y(d.length + translateY)) ); });
 
 
              //  changeBar.append("text")
